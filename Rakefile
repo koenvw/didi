@@ -14,7 +14,7 @@ require 'rake'
 require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
-  gem.name = "capistrano-drupal"
+  gem.name = "capistrano-didi"
   gem.homepage = "http://github.com/koenvw/didi"
   gem.license = "MIT"
   gem.summary = %Q{didi - drupal deployment script based on capistrano}

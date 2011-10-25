@@ -1,3 +1,5 @@
+Capistrano::Configuration.instance.load do
+
 # =============================================
 # Script variables. These must be set in client capfile.
 # =============================================
@@ -48,10 +50,11 @@ _cset(:drush)           { "drush -r #{current_path}" + (domain == 'default' ? ''
 
 _cset(:release_settings)              { File.join(release_path, drupal_path, 'sites', domain, settings) }
 _cset(:release_files)                 { File.join(release_path, drupal_path, 'sites', domain, files) }
+_cset(:release_domain)                { File.join(release_path, drupal_path, 'sites', domain) }
+
 _cset(:previous_release_settings)     { releases.length > 1 ? File.join(previous_release, drupal_path, 'sites', domain, settings) : nil }
 _cset(:previous_release_files)        { releases.length > 1 ? File.join(previous_release, drupal_path, 'sites', domain, files) : nil }
-
-_cset(:previous_release_domain)        { releases.length > 1 ? File.join(previous_release, drupal_path, 'sites', domain) : nil }
+_cset(:previous_release_domain)       { releases.length > 1 ? File.join(previous_release, drupal_path, 'sites', domain) : nil }
 
 # =========================================================================
 # Overwrites to the DEPLOY tasks in the capistrano library.
@@ -68,7 +71,7 @@ namespace :deploy do
     update
     cleanup
   end
-  before "deploy:update", "tests:php_lint_test"
+  #before "deploy:update", "tests:php_lint_test"
   
   desc "Deploys latest code and rebuild the database"
   task :rebuild do
@@ -106,14 +109,17 @@ namespace :deploy do
       end
     end
 
-    run <<-CMD
+    
+    run "if [[ ! -d #{release_domain} ]]; then mkdir #{release_domain}; fi" # in case the default is not versioned
+    
+    run <<-CMD    
       ln -nfs #{shared_files} #{release_files} &&
       ln -nfs #{shared_settings} #{release_settings}
     CMD
 
     if previous_release
+      run "if [[ -d #{previous_release_domain} ]]; then chmod 777 #{previous_release_domain}; fi" # if drupal changed the permissions of the folder
       run <<-CMD
-        chmod 777 #{previous_release_domain} &&
         rm -f #{previous_release_settings} &&
         rm -f #{previous_release_files}
       CMD
@@ -155,15 +161,15 @@ namespace :drush do
     run "cd #{current_path}/#{drupal_path} && drush updatedb -y"
   end
   
-  desc "Update"
-  task :up do
+  desc "Update via drush, runs fra, updb and cc"
+  task :update do
     fra
     updb
     cc
   end
   
-  after "deploy:symlink", "drush:up"
-  after "deploy:setup", "drush:si"
+  after "deploy:symlink", "drush:update"
+  #after "deploy:setup", "drush:si"
 
 end
 
@@ -239,3 +245,4 @@ def drupal_settings(version)
   end
 end
 
+end
