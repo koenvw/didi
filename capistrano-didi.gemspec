@@ -27,6 +27,7 @@ Gem::Specification.new do |s|
     "VERSION",
     "bin/didi",
     "bin/didify",
+    "capistrano-didi.gemspec",
     "lib/didi/recipes/didi.rb",
     "test/helper.rb",
     "test/test_didi.rb"
