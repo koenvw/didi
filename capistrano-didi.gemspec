@@ -49,6 +49,9 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<bundler>, ["~> 1.0.0"])
       s.add_development_dependency(%q<jeweler>, ["~> 1.6.4"])
       s.add_development_dependency(%q<rcov>, [">= 0"])
+      s.add_runtime_dependency(%q<capistrano>, [">= 2.9.0"])
+      s.add_runtime_dependency(%q<railsless-deploy>, [">= 1.0.2"])
+      s.add_runtime_dependency(%q<capistrano-ext>, [">= 1.2.1"])
     else
       s.add_dependency(%q<railsless-deploy>, [">= 1.0.2"])
       s.add_dependency(%q<capistrano-ext>, [">= 1.2.1"])
@@ -57,6 +60,9 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<bundler>, ["~> 1.0.0"])
       s.add_dependency(%q<jeweler>, ["~> 1.6.4"])
       s.add_dependency(%q<rcov>, [">= 0"])
+      s.add_dependency(%q<capistrano>, [">= 2.9.0"])
+      s.add_dependency(%q<railsless-deploy>, [">= 1.0.2"])
+      s.add_dependency(%q<capistrano-ext>, [">= 1.2.1"])
     end
   else
     s.add_dependency(%q<railsless-deploy>, [">= 1.0.2"])
@@ -66,6 +72,9 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<bundler>, ["~> 1.0.0"])
     s.add_dependency(%q<jeweler>, ["~> 1.6.4"])
     s.add_dependency(%q<rcov>, [">= 0"])
+    s.add_dependency(%q<capistrano>, [">= 2.9.0"])
+    s.add_dependency(%q<railsless-deploy>, [">= 1.0.2"])
+    s.add_dependency(%q<capistrano-ext>, [">= 1.2.1"])
   end
 end
 

@@ -21,6 +21,9 @@ Jeweler::Tasks.new do |gem|
   gem.description = %Q{didi is a collection of recipes for capistrano that allow drupal to be deployed, tested and used in a CI environment}
   gem.email = "koenvw@gmail.com"
   gem.authors = ["Koen Van Winckel"]
+  gem.add_dependency "capistrano", ">= 2.9.0"
+  gem.add_dependency "railsless-deploy", ">= 1.0.2"
+  gem.add_dependency "capistrano-ext", ">= 1.2.1"
   # dependencies defined in Gemfile
 end
 Jeweler::RubygemsDotOrgTasks.new
