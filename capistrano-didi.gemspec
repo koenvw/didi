@@ -5,7 +5,7 @@
 
 Gem::Specification.new do |s|
   s.name = %q{capistrano-didi}
-  s.version = "0.2.0"
+  s.version = "0.2.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Koen Van Winckel"]
@@ -34,6 +34,7 @@ Gem::Specification.new do |s|
   ]
   s.homepage = %q{http://github.com/koenvw/didi}
   s.licenses = ["MIT"]
+  s.post_install_message = %q{"didify" and "didi" commands installed. Try them out!}
   s.require_paths = ["lib"]
   s.rubygems_version = %q{1.6.2}
   s.summary = %q{didi - drupal deployment script based on capistrano}
