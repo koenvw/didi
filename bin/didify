@@ -94,4 +94,7 @@ unless File.exists?("drupal")
 end
 
 puts ""
-puts 'After editing your config files just run: didi deploy:setup and then didi deploy'
+puts 'After editing your config files just run: "didi deploy:cold" to set things up.'
+puts 'After that you can do incremental updates with: "didi deploy"'
+puts 'Or "didi deploy:rebuild" to setup from scratch'
+

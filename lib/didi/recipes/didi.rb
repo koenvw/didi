@@ -72,6 +72,14 @@ namespace :deploy do
     cleanup
   end
   #before "deploy:update", "tests:php_lint_test"
+
+  desc "Setup a drupal site from scratch"
+  task :cold do
+    setup
+    update_code
+    symlink
+  end
+  after "deploy:cold", "drush:si"
   
   desc "Deploys latest code and rebuild the database"
   task :rebuild do
