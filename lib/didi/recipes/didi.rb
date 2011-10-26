@@ -163,6 +163,11 @@ namespace :drush do
     run "cd #{current_path}/#{drupal_path} && drush pm-enable #{baseline} -y"
     cc
   end
+  desc "Enable the simpletest feature"
+  task :enst do
+    run "cd #{current_path}/#{drupal_path} && drush pm-enable simpletest -y"
+    cc
+  end
   
   desc "Apply any database updates required (as with running update.php)"
   task :updb do
@@ -213,14 +218,19 @@ namespace :tests do
   
   desc 'Runs unit tests for given site'
   task :unit do
+    run "mkdir -p #{current_path}/build/simpletest"
     test_files = Dir.glob( File.join( drupal_path, 'sites', '**', '*.test' ) )
-    puts test_files
+    test_files.map! {|f| f.sub!(drupal_path + "/","")}
     if test_files.any?
       test_files.each do |test_file|
-        fail 'Unit tests failed' unless system("php ./drupal/scripts/run-tests.sh --url http://#{site} --file '#{test_file}'")
+        run "cd #{current_path}/#{drupal_path} && php scripts/run-tests.sh --url http://#{site} --xml '../build/simpletest' --file '#{test_file}'"
       end
     end
+    run "cd #{current_path}/build && tar czf simpletest.tgz simpletest"
+    download "#{current_path}/build/simpletest.tgz", "build/", :once => true, :via => :scp
+    exec "tar xzf build/simpletest.tgz -C build"
   end
+  before "tests:unit", "drush:enst"
   
 end
 
