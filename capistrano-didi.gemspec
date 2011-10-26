@@ -4,14 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{capistrano-didi}
-  s.version = "0.2.1"
+  s.name = "capistrano-didi"
+  s.version = "0.2.2"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Koen Van Winckel"]
-  s.date = %q{2011-10-25}
-  s.description = %q{didi is a collection of recipes for capistrano that allow drupal to be deployed, tested and used in a CI environment}
-  s.email = %q{koenvw@gmail.com}
+  s.date = "2011-10-26"
+  s.description = "didi is a collection of recipes for capistrano that allow drupal to be deployed, tested and used in a CI environment"
+  s.email = "koenvw@gmail.com"
   s.executables = ["didify", "didi"]
   s.extra_rdoc_files = [
     "LICENSE.txt",
@@ -32,12 +32,12 @@ Gem::Specification.new do |s|
     "test/helper.rb",
     "test/test_didi.rb"
   ]
-  s.homepage = %q{http://github.com/koenvw/didi}
+  s.homepage = "http://github.com/koenvw/didi"
   s.licenses = ["MIT"]
-  s.post_install_message = %q{"didify" and "didi" commands installed. Try them out!}
+  s.post_install_message = "\"didify\" and \"didi\" commands installed. Try them out!"
   s.require_paths = ["lib"]
-  s.rubygems_version = %q{1.6.2}
-  s.summary = %q{didi - drupal deployment script based on capistrano}
+  s.rubygems_version = "1.8.11"
+  s.summary = "didi - drupal deployment script based on capistrano"
 
   if s.respond_to? :specification_version then
     s.specification_version = 3
