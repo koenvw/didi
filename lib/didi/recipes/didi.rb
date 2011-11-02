@@ -29,6 +29,7 @@ set :use_sudo,          false
 # Defaults. You may change these to your projects convenience
 # ==============================================
 #ssh_options[:verbose] = :debug #FIXME
+ssh_options[:forward_agent] = true
 _cset :domain,          'default'
 _cset :db_host,         'localhost'
 _cset :drupal_path,     'drupal'
@@ -71,7 +72,7 @@ namespace :deploy do
     update
     cleanup
   end
-  #before "deploy:update", "tests:php_lint_test"
+  after "deploy:default", "drush:update"
 
   desc "Setup a drupal site from scratch"
   task :cold do
@@ -100,7 +101,8 @@ namespace :deploy do
     dirs += shared_children.map { |d| File.join(shared_path, d) }
     run <<-CMD
       mkdir -p #{dirs.join(' ')} &&
-      #{try_sudo} chown #{user}:#{srv_usr} #{shared_files}
+      #{try_sudo} chown #{user}:#{srv_usr} #{shared_files} &&
+      #{try_sudo} chmod g+w #{shared_files}
     CMD
 
     #create drupal config file
@@ -180,9 +182,7 @@ namespace :drush do
     updb
     cc
   end
-  
-  after "deploy:symlink", "drush:update"
-  #after "deploy:setup", "drush:si"
+
 
 end
 
@@ -195,7 +195,6 @@ namespace :tests do
   desc "Test php lint"
   task :php_lint_test do
     errors = []
-
     test_files = Dir.glob( File.join( drupal_path, 'sites', '**', '*.{engine,inc,info,install,make,module,php,profile,test,theme,tpl,xtmpl}' ) )
     if test_files.any?
       test_files.each do |test_file|
@@ -206,7 +205,6 @@ namespace :tests do
         end
       end
     end
-
     puts "Commit tests failed on files:\n" + errors.join( "\n" ) unless errors.empty?
     exit 1 unless errors.empty?
   end
@@ -227,6 +225,7 @@ namespace :tests do
       end
     end
     run "cd #{current_path}/build && tar czf simpletest.tgz simpletest"
+    exec "if [[ ! -d build ]]; then mkdir build; fi" # create build folder locally if needed
     download "#{current_path}/build/simpletest.tgz", "build/", :once => true, :via => :scp
     exec "tar xzf build/simpletest.tgz -C build"
   end

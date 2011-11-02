@@ -88,7 +88,8 @@ end
 
 puts "[done] didified!"
 
-unless File.exists?("drupal")
+unless File.exists?("#{base}/drupal")
+  puts ""
   puts 'WARNING: drupal folder not found! install drupal in folder "drupal" or change the :drupal_path variable.'
   puts 'WARNING: for example: drush dl drupal --drupal-project-rename="drupal"'
 end
