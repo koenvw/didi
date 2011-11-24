@@ -1,13 +1,15 @@
 Capistrano::Configuration.instance.load do
+  
+require 'FileUtils'
 
-# =============================================
-# Script variables. These must be set in client capfile.
-# =============================================
+# =========================================================================
+# These variables MUST be set in the client capfiles. If they are not set,
+# the deploy will fail with an error.
+# =========================================================================
 _cset(:db_type)         { abort "Please specify the Drupal database type (:db_type)." }
 _cset(:db_name)         { abort "Please specify the Drupal database name (:db_name)." }
 _cset(:db_username)     { abort "Please specify the Drupal database username (:db_username)." }
 _cset(:db_password)     { abort "Please specify the Drupal database password (:db_password)." }
-_cset(:drupal_version)  { abort "Please specify the Drupal version (6 or 7) (:drupal_version)." }
 
 _cset(:profile)         { abort "Please specify the Drupal install profile (:profile)." }
 _cset(:site)            { abort "Please specify the Drupal site (:site)." }
@@ -17,32 +19,33 @@ _cset(:sitesubdir)      { abort "Please specify the Drupal site subdir (:sitemai
 _cset(:baseline)        { abort "Please specify the Baseline feature (:baseline)." } 
 
 
-# Fixed defaults. Change these at your own risk, (well tested) support for different values is left for future versions.
+# =========================================================================
+# These variables may be set in the client capfile if their default values
+# are not sufficient.
+# =========================================================================
 set :scm,               :git 
 set :deploy_via,        :remote_cache
 set :drupal_version,    '7'
-# Only bother to keep the last five releases
 set :keep_releases,     5
 set :use_sudo,          false
 
-# ==============================================
-# Defaults. You may change these to your projects convenience
-# ==============================================
-#ssh_options[:verbose] = :debug #FIXME
-ssh_options[:forward_agent] = true
-_cset :domain,          'default'
-_cset :db_host,         'localhost'
-_cset :drupal_path,     'drupal'
-_cset :srv_usr,         'www-data'
-#_cset :srv_password,    'www-data' #FIXME
+set :domain,          'default'
+set :db_host,         'localhost'
+set :drupal_path,     'drupal'
+set :srv_usr,         'www-data'
 
-# ===============================================
-# Script constants. These should not be changed
-# ===============================================
-set :settings,          'settings.php'
-set :files,             'files'
-set :dbbackups,         'db_backups' 
-set :shared_children,   [domain, File.join(domain, files)]        
+ssh_options[:forward_agent] = true
+#ssh_options[:verbose] = :debug #FIXME
+
+# =========================================================================
+# These variables should NOT be changed unless you are very confident in
+# what you are doing. Make sure you understand all the implications of your
+# changes if you do decide to muck with these!
+# =========================================================================
+_cset :settings,          'settings.php'
+_cset :files,             'files'
+_cset :dbbackups,         'db_backups' 
+_cset :shared_children,   [domain, File.join(domain, files)]        
 
 _cset(:shared_settings) { File.join(shared_path, domain, settings) }
 _cset(:shared_files)    { File.join(shared_path, domain, files) }
@@ -70,21 +73,26 @@ namespace :deploy do
   DESC
   task :default do
     update
+    manage.dbdump_previous
     cleanup
   end
-  after "deploy:default", "drush:update"
+  after "deploy", "drush:update"
 
   desc "Setup a drupal site from scratch"
   task :cold do
-    setup
-    update_code
-    symlink
+    transaction do
+      setup
+      update_code
+      symlink
+    end
   end
   after "deploy:cold", "drush:si"
   
   desc "Deploys latest code and rebuild the database"
   task :rebuild do
-    default
+    update_code    
+    symlink
+    manage.dbdump_previous
   end
   after "deploy:rebuild", "drush:si"
   
@@ -109,7 +117,7 @@ namespace :deploy do
     put configuration, shared_settings
   end
   
-  desc "Rebuild files and settings symlinks"
+  desc "[internal] Rebuild files and settings symlinks"
   task :finalize_update, :except => { :no_release => true } do
     on_rollback do
       if previous_release
@@ -136,6 +144,78 @@ namespace :deploy do
     end 
   end
   
+  desc <<-DESC
+    Removes old releases and corresponding DB backups.
+  DESC
+  task :cleanup, :except => { :no_release => true } do
+    count = fetch(:keep_releases, 5).to_i
+    if count >= releases.length
+      logger.important "No old releases to clean up"
+    else
+      logger.info "keeping #{count} of #{releases.length} deployed releases"
+      old_releases = (releases - releases.last(count))
+      directories = old_releases.map { |release| File.join(releases_path, release) }.join(" ")
+      databases = old_releases.map { |release| File.join(dbbackups_path, "#{release}.sql") }.join(" ")
+
+      run "rm -rf #{directories} #{databases}"
+    end
+  end
+  
+  namespace :rollback do  
+  
+    desc <<-DESC
+      [internal] Removes the most recently deployed release.
+      This is called by the rollback sequence, and should rarely
+      (if ever) need to be called directly.
+    DESC
+    task :cleanup, :except => { :no_release => true } do
+      # chmod 777 #{release_settings} #{release_files} &&
+      run "if [ `readlink #{current_path}` != #{current_release} ]; then rm -rf #{current_release}; fi"
+    end
+  
+    desc <<-DESC
+    [internal] Points the current, files, and settings symlinks at the previous revision.
+    DESC
+    task :revision, :except => { :no_release => true } do
+      if previous_release
+        run <<-CMD
+          rm #{current_path};
+          ln -s #{previous_release} #{current_path};
+          ln -nfs #{shared_files} #{previous_release_files};
+          ln -nfs #{shared_settings} #{previous_release_settings}
+        CMD
+      else
+        abort "could not rollback the code because there is no prior release"
+      end
+    end
+
+
+    desc <<-DESC
+    [internal] If a database backup from the previous release is found, dump the current
+    database and import the backup. This task should NEVER be called standalone.
+    DESC
+    task :db_rollback, :except => { :no_release => true } do
+      if previous_release
+        logger.info "Dumping current database and importing previous one (If one is found)."
+        previous_db = File.join(dbbackups_path, "#{releases[-2]}.sql")
+        import_cmd = "cd #{previous_release}/#{drupal_path} && drush sql-drop -y && drush sql-cli < #{previous_db} && rm #{previous_db}"
+        run "if [ -e #{previous_db} ]; then #{import_cmd}; fi"
+      else
+        abort "could not rollback the database because there is no prior release db backups"
+      end
+    end
+
+    desc <<-DESC
+    go back to the previous release (code and database)
+    DESC
+    task :default do
+      revision
+      db_rollback
+      cleanup
+    end
+
+  end
+
 end
 
 # =========================
@@ -148,7 +228,7 @@ namespace :drush do
     run "cd #{current_path}/#{drupal_path} && drush cache-clear all"
   end
   
-  desc "Revert all enabled feature module on your site"
+  desc "Revert all enabled feature modules on your site"
   task :fra do
     run "cd #{current_path}/#{drupal_path} && drush features-revert-all -y"
   end
@@ -160,12 +240,12 @@ namespace :drush do
     bl
   end
   
-  desc "Enable the baseline feature"
+  desc "[internal] Enable the baseline feature"
   task :bl do
     run "cd #{current_path}/#{drupal_path} && drush pm-enable #{baseline} -y"
     cc
   end
-  desc "Enable the simpletest feature"
+  desc "[internal]  Enable the simpletest feature"
   task :enst do
     run "cd #{current_path}/#{drupal_path} && drush pm-enable simpletest -y"
     cc
@@ -178,11 +258,10 @@ namespace :drush do
   
   desc "Update via drush, runs fra, updb and cc"
   task :update do
-    fra
     updb
+    fra
     cc
   end
-
 
 end
 
@@ -221,7 +300,7 @@ namespace :tests do
     test_files.map! {|f| f.sub!(drupal_path + "/","")}
     if test_files.any?
       test_files.each do |test_file|
-        run "cd #{current_path}/#{drupal_path} && php scripts/run-tests.sh --url http://#{site} --xml '../build/simpletest' --file '#{test_file}'"
+        run "cd #{current_path}/#{drupal_path} && php scripts/run-tests.sh --url http://#{site} --xml '../build/simpletest' --file '#{test_file}'" unless test_file.include?('/contrib/')
       end
     end
     run "cd #{current_path}/build && tar czf simpletest.tgz simpletest"
@@ -232,6 +311,26 @@ namespace :tests do
   before "tests:unit", "drush:enst"
   
 end
+
+# =========================
+# Manage methods
+# =========================
+
+namespace :manage do
+  
+  task :block_robots do
+    put "User-agent: *\nDisallow: /", "#{current_path}/#{drupal_path}/robots.txt"
+  end
+  
+  task :dbdump_previous do
+    #Backup the previous release's database 
+    if previous_release
+      run "cd #{current_path}/#{drupal_path} && drush sql-dump > #{ File.join(dbbackups_path, "#{releases[-2]}.sql") }"
+    end
+  end
+  
+end
+
 
 # =========================
 # Helper methods
