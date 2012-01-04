@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Koen Van Winckel"]
-  s.date = "2011-11-24"
+  s.date = "2012-01-04"
   s.description = "didi is a collection of recipes for capistrano that allow drupal to be deployed, tested and used in a CI environment"
   s.email = "koenvw@gmail.com"
   s.executables = ["didify", "didi"]
