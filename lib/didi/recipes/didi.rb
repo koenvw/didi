@@ -33,6 +33,7 @@ set :domain,          'default'
 set :db_host,         'localhost'
 set :drupal_path,     'drupal'
 set :srv_usr,         'www-data'
+set :enable_robots,   false
 
 ssh_options[:forward_agent] = true
 #ssh_options[:verbose] = :debug #FIXME
@@ -46,11 +47,13 @@ _cset :settings,          'settings.php'
 _cset :files,             'files'
 _cset :dbbackups,         'db_backups'
 _cset :shared_children,   [domain, File.join(domain, files)]
+_cset :drush_path,        ''
 
 _cset(:shared_settings) { File.join(shared_path, domain, settings) }
 _cset(:shared_files)    { File.join(shared_path, domain, files) }
 _cset(:dbbackups_path)  { File.join(deploy_to, dbbackups, domain) }
 _cset(:drush)           { "drush -r #{current_path}" + (domain == 'default' ? '' : " -l #{domain}") }  # FIXME: not in use?
+
 
 _cset(:release_settings)              { File.join(release_path, drupal_path, 'sites', domain, settings) }
 _cset(:release_files)                 { File.join(release_path, drupal_path, 'sites', domain, files) }
@@ -64,7 +67,7 @@ _cset(:previous_release_domain)       { releases.length > 1 ? File.join(previous
 # Extra dependecy checks
 # =========================================================================
 depend :local,  :command, "drush"
-depend :remote, :command, "drush"
+depend :remote, :command, "#{drush_path}drush"
 
 
 # =========================================================================
@@ -112,6 +115,7 @@ namespace :deploy do
     configuration = drupal_settings(drupal_version)
 
     #Create shared directories
+    # FIXME: chown / chmod require user to be member of 
     dirs = [deploy_to, releases_path, shared_path, dbbackups_path, shared_files]
     dirs += shared_children.map { |d| File.join(shared_path, d) }
     run <<-CMD
@@ -232,42 +236,63 @@ namespace :drush do
 
   desc "Clear the Drupal site cache"
   task :cc do
-    run "cd #{current_path}/#{drupal_path} && drush cache-clear all"
+    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush cache-clear all"
   end
 
   desc "Revert all enabled feature modules on your site"
   task :fra do
-    run "cd #{current_path}/#{drupal_path} && drush features-revert-all -y"
+    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush features-revert-all -y"
   end
 
   desc "Install Drupal along with modules/themes/configuration using the specified install profile"
   task :si do
     dburl = "#{db_type}://#{db_username}:#{db_password}@#{db_host}/#{db_name}"
-    run "cd #{current_path}/#{drupal_path} && drush site-install #{profile} --db-url=#{dburl} --sites-subdir=default --account-name=admin --account-pass=#{adminpass}  --account-mail=#{sitemail} --site-mail='#{sitemail}' --site-name='#{site}' -y"
+    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush site-install #{profile} --db-url=#{dburl} --sites-subdir=default --account-name=admin --account-pass=#{adminpass}  --account-mail=#{sitemail} --site-mail='#{sitemail}' --site-name='#{site}' -y"
     bl
   end
 
   desc "[internal] Enable the baseline feature"
   task :bl do
-    run "cd #{current_path}/#{drupal_path} && drush pm-enable #{baseline} -y"
+    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush pm-enable #{baseline} -y"
     cc
   end
   desc "[internal]  Enable the simpletest feature"
   task :enst do
-    run "cd #{current_path}/#{drupal_path} && drush pm-enable simpletest -y"
+    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush pm-enable simpletest -y"
     cc
+  end
+
+  desc "Disable maintenance mode, enabling the site"
+  task :ensite do
+    if drupal_version == 6
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set site_offline 0"
+    else
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set maintenance_mode 0"
+    end
+  end
+
+  desc "Enable maintenance mode, disabling the site"
+  task :dissite do
+    if drupal_version == 6
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set site_offline 1"
+    else
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set maintenance_mode 1"
+    end
   end
 
   desc "Apply any database updates required (as with running update.php)"
   task :updb do
-    run "cd #{current_path}/#{drupal_path} && drush updatedb -y"
+    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush updatedb -y"
   end
 
   desc "Update via drush, runs fra, updb and cc"
   task :update do
+    dissite
     updb
     fra
+    ensite
     cc
+    manage.block_robots unless enable_robots
   end
 
 end
@@ -347,7 +372,7 @@ namespace :manage do
   task :dbdump_previous do
     #Backup the previous release's database
     if previous_release
-      run "cd #{current_path}/#{drupal_path} && drush sql-dump > #{ File.join(dbbackups_path, "#{releases[-2]}.sql") }"
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-dump > #{ File.join(dbbackups_path, "#{releases[-2]}.sql") }"
     end
   end
 
@@ -355,13 +380,14 @@ namespace :manage do
   task :pull_dump do
     sql_file = File.join(dbbackups_path, "#{releases.last}-pull.sql")
     # dump & gzip remote file
-    run "cd #{current_path}/#{drupal_path} && drush sql-dump > #{sql_file} && gzip -f #{sql_file}"
+    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-dump > #{sql_file} && gzip -f #{sql_file}"
     # copy to local
     system "if [ ! -d build ]; then mkdir build; fi" # create build folder locally if needed
     download "#{sql_file}.gz", "build/", :once => true, :via => :scp
     run "rm #{sql_file}.gz"
     # extract and restore
-    system "gunzip -f build/#{File.basename(sql_file)}.gz && mysql dotproject_oa_live < build/#{File.basename(sql_file)}"
+    # FIXME
+    #system "gunzip -f build/#{File.basename(sql_file)}.gz && mysql {local_database} < build/#{File.basename(sql_file)}"
   end
 
   task :push_dump do
@@ -379,24 +405,41 @@ def drupal_settings(version)
   if version.to_s == '6'
     settings = <<-STRING
 <?php
-  $db_url = "#{db_type}://#{db_username}:#{db_password}@#{db_host}/#{db_name}";
+$db_url = "#{db_type}://#{db_username}:#{db_password}@#{db_host}/#{db_name}";
+ini_set('arg_separator.output',     '&amp;');
+ini_set('magic_quotes_runtime',     0);
+ini_set('magic_quotes_sybase',      0);
+ini_set('session.cache_expire',     200000);
+ini_set('session.cache_limiter',    'none');
+ini_set('session.cookie_lifetime',  2000000);
+ini_set('session.gc_probability', 1);
+ini_set('session.gc_maxlifetime',   200000);
+ini_set('session.save_handler',     'user');
+ini_set('session.use_cookies',      1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.use_trans_sid',    0);
+ini_set('url_rewriter.tags',        '');
     STRING
   elsif version == '7'
     settings = <<-STRING
 <?php
-  $databases = array ('default' => array ('default' => array (
-    'database' => '#{db_name}',
-    'username' => '#{db_username}',
-    'password' => '#{db_password}',
-    'host' => '#{db_host}',
-    'port' => '',
-    'driver' => '#{db_type}',
-    'prefix' => '',
-  )));
+$databases = array ('default' => array ('default' => array (
+  'database' => '#{db_name}',
+  'username' => '#{db_username}',
+  'password' => '#{db_password}',
+  'host' => '#{db_host}',
+  'port' => '',
+  'driver' => '#{db_type}',
+  'prefix' => '',
+)));
+ini_set('session.gc_probability', 1);
+ini_set('session.gc_divisor', 100);
+ini_set('session.gc_maxlifetime', 200000);
+ini_set('session.cookie_lifetime', 2000000);
     STRING
   else
     abort "Unsupported Drupal version #{version}."
   end
 end
 
-end
+end # Capistrano::Configuration.instance.load 
