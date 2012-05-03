@@ -34,6 +34,9 @@ set :db_host,         'localhost'
 set :drupal_path,     'drupal'
 set :srv_usr,         'www-data'
 set :enable_robots,   false
+set :no_disable,      true
+set :local_database,  nil
+set :backup_database, true
 
 ssh_options[:forward_agent] = true
 #ssh_options[:verbose] = :debug #FIXME
@@ -46,22 +49,20 @@ ssh_options[:forward_agent] = true
 _cset :settings,          'settings.php'
 _cset :files,             'files'
 _cset :dbbackups,         'db_backups'
-_cset :shared_children,   [domain, File.join(domain, files)]
 _cset :drush_path,        ''
 
-_cset(:shared_settings) { File.join(shared_path, domain, settings) }
-_cset(:shared_files)    { File.join(shared_path, domain, files) }
-_cset(:dbbackups_path)  { File.join(deploy_to, dbbackups, domain) }
+_cset(:shared_settings) { domain.to_a.map { |d| File.join(shared_path, d, settings) } }
+_cset(:shared_files)    { domain.to_a.map { |d| File.join(shared_path, d, files) } }
+_cset(:dbbackups_path)  { domain.to_a.map { |d| File.join(deploy_to, dbbackups, d) } }
 _cset(:drush)           { "drush -r #{current_path}" + (domain == 'default' ? '' : " -l #{domain}") }  # FIXME: not in use?
 
+_cset(:release_settings)              { domain.to_a.map { |d| File.join(release_path, drupal_path, 'sites', d, settings) } }
+_cset(:release_files)                 { domain.to_a.map { |d| File.join(release_path, drupal_path, 'sites', d, files) } }
+_cset(:release_domain)                { domain.to_a.map { |d| File.join(release_path, drupal_path, 'sites', d) } }
 
-_cset(:release_settings)              { File.join(release_path, drupal_path, 'sites', domain, settings) }
-_cset(:release_files)                 { File.join(release_path, drupal_path, 'sites', domain, files) }
-_cset(:release_domain)                { File.join(release_path, drupal_path, 'sites', domain) }
-
-_cset(:previous_release_settings)     { releases.length > 1 ? File.join(previous_release, drupal_path, 'sites', domain, settings) : nil }
-_cset(:previous_release_files)        { releases.length > 1 ? File.join(previous_release, drupal_path, 'sites', domain, files) : nil }
-_cset(:previous_release_domain)       { releases.length > 1 ? File.join(previous_release, drupal_path, 'sites', domain) : nil }
+_cset(:previous_release_settings)     { releases.length > 1 ? domain.to_a.map { |d| File.join(previous_release, drupal_path, 'sites', d, settings) } : nil }
+_cset(:previous_release_files)        { releases.length > 1 ? domain.to_a.map { |d| File.join(previous_release, drupal_path, 'sites', d, files) } : nil }
+_cset(:previous_release_domain)       { releases.length > 1 ? domain.to_a.map { |d| File.join(previous_release, drupal_path, 'sites', d) } : nil }
 
 # =========================================================================
 # Extra dependecy checks
@@ -111,21 +112,23 @@ namespace :deploy do
     Creates the necessary file structure and the shared Drupal settings file.
   DESC
   task :setup, :except => { :no_release => true } do
-    #try to create configuration file before writing directories to server
-    configuration = drupal_settings(drupal_version)
-
     #Create shared directories
-    # FIXME: chown / chmod require user to be member of 
+    # FIXME: chown / chmod require user to be member of
     dirs = [deploy_to, releases_path, shared_path, dbbackups_path, shared_files]
-    dirs += shared_children.map { |d| File.join(shared_path, d) }
+    dirs += domain.map { |d| File.join(shared_path, d) }
+
     run <<-CMD
-      mkdir -p #{dirs.join(' ')} &&
-      #{try_sudo} chown #{user}:#{srv_usr} #{shared_files} &&
-      #{try_sudo} chmod g+w #{shared_files}
+      mkdir -p #{dirs.join(' ')}
+      #{try_sudo} chown #{user}:#{srv_usr} #{shared_files.to_a.join(' ')} &&
+      #{try_sudo} chmod g+w #{shared_files.to_a.join(' ')}
     CMD
 
     #create drupal config file
-    put configuration, shared_settings
+    domain.to_a.each_with_index do |d, i|
+      configuration = drupal_settings(drupal_version, d)
+      put configuration, shared_settings[i]
+    end
+
   end
 
   desc "[internal] Rebuild files and settings symlinks"
@@ -139,19 +142,27 @@ namespace :deploy do
     end
 
 
-    run "if [ ! -d #{release_domain} ]; then mkdir #{release_domain}; fi" # in case the default is not versioned
+    release_domain.each do |rd|
+      run "if [ ! -d #{rd} ]; then mkdir #{rd}; fi" # in case the default is not versioned
+    end
 
-    run <<-CMD
-      ln -nfs #{shared_files} #{release_files} &&
-      ln -nfs #{shared_settings} #{release_settings}
-    CMD
+    shared_files.each_with_index do |sf, i|
+      run <<-CMD
+        ln -nfs #{sf} #{release_files[i]} &&
+        ln -nfs #{shared_settings[i]} #{release_settings[i]}
+        CMD
+    end
 
     if previous_release
-      run "if [ -d #{previous_release_domain} ]; then chmod 777 #{previous_release_domain}; fi" # if drupal changed the permissions of the folder
-      run <<-CMD
-        rm -f #{previous_release_settings} &&
-        rm -f #{previous_release_files}
-      CMD
+      # FIXME: executes on initial deploy:cold?
+      # FIXME: this breaks the current site untill deploy:symlink is executed ?
+      previous_release_domain.each_with_index do |prd, i|
+        run "if [ -d #{prd} ]; then chmod 777 #{prd}; fi" # if drupal changed the permissions of the folder
+        run <<-CMD
+          rm -f #{previous_release_settings[i]} &&
+          rm -f #{previous_release_files[i]}
+        CMD
+      end
     end
   end
 
@@ -236,24 +247,32 @@ namespace :drush do
 
   desc "Clear the Drupal site cache"
   task :cc do
-    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush cache-clear all"
+    domain.each do |d|
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " cache-clear all"
+    end
   end
 
   desc "Revert all enabled feature modules on your site"
   task :fra do
-    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush features-revert-all -y"
+    domain.each do |d|
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " features-revert-all -y"
+    end
   end
 
   desc "Install Drupal along with modules/themes/configuration using the specified install profile"
   task :si do
-    dburl = "#{db_type}://#{db_username}:#{db_password}@#{db_host}/#{db_name}"
-    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush site-install #{profile} --db-url=#{dburl} --sites-subdir=default --account-name=admin --account-pass=#{adminpass}  --account-mail=#{sitemail} --site-mail='#{sitemail}' --site-name='#{site}' -y"
+    domain.each do |d|
+      dburl = "#{db_type}://#{db_username}:#{db_password}@#{db_host}/#{db_name.gsub("%domain", d)}"
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush site-install #{profile} --db-url=#{dburl} --sites-subdir=#{d} --account-name=admin --account-pass=#{adminpass}  --account-mail=#{sitemail} --site-mail='#{sitemail}' --site-name='#{site.gsub("%domain", d)}' -y"
+    end
     bl
   end
 
   desc "[internal] Enable the baseline feature"
   task :bl do
-    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush pm-enable #{baseline} -y"
+    domain.each do |d|
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " pm-enable #{baseline.gsub("%domain", d)} -y"
+    end
     cc
   end
   desc "[internal]  Enable the simpletest feature"
@@ -267,7 +286,9 @@ namespace :drush do
     if drupal_version == 6
       run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set site_offline 0"
     else
-      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set maintenance_mode 0"
+      domain.each do |d|
+        run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " vset --always-set maintenance_mode 0"
+      end
     end
   end
 
@@ -276,22 +297,27 @@ namespace :drush do
     if drupal_version == 6
       run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set site_offline 1"
     else
-      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set maintenance_mode 1"
+      domain.each do |d|
+        run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " vset --always-set maintenance_mode 1"
+      end
     end
   end
 
   desc "Apply any database updates required (as with running update.php)"
   task :updb do
-    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush updatedb -y"
+    domain.each do |d|
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " updatedb -y"
+    end
   end
 
   desc "Update via drush, runs fra, updb and cc"
   task :update do
-    dissite
+    dissite unless no_disable
     updb
+    cc # fix for user_permissions constraint?
     fra
-    ensite
-    cc
+    cc # for good measure?
+    ensite unless no_disable
     manage.block_robots unless enable_robots
   end
 
@@ -365,29 +391,36 @@ end
 
 namespace :manage do
 
+  desc "Block bots via robots.txt"
   task :block_robots do
     put "User-agent: *\nDisallow: /", "#{current_path}/#{drupal_path}/robots.txt"
   end
 
   task :dbdump_previous do
     #Backup the previous release's database
-    if previous_release
+    if previous_release && backup_database
       run "cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-dump > #{ File.join(dbbackups_path, "#{releases[-2]}.sql") }"
     end
   end
 
   desc 'Dump remote database and restore locally'
   task :pull_dump do
-    sql_file = File.join(dbbackups_path, "#{releases.last}-pull.sql")
-    # dump & gzip remote file
-    run "cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-dump > #{sql_file} && gzip -f #{sql_file}"
-    # copy to local
-    system "if [ ! -d build ]; then mkdir build; fi" # create build folder locally if needed
-    download "#{sql_file}.gz", "build/", :once => true, :via => :scp
-    run "rm #{sql_file}.gz"
-    # extract and restore
-    # FIXME
-    #system "gunzip -f build/#{File.basename(sql_file)}.gz && mysql {local_database} < build/#{File.basename(sql_file)}"
+    if local_database.nil?
+      puts "NO LOCAL DATABASE FOUND, set :local_database in the config file.."
+    else
+      set(:runit, Capistrano::CLI.ui.ask("WARNING!! this will overwrite this local database: '#{local_database}', type 'yes' to continue: "))
+      if runit == 'yes'
+        sql_file = File.join(dbbackups_path, "#{releases.last}-pull.sql")
+        # dump & gzip remote file
+        run "cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-dump > #{sql_file} && gzip -f #{sql_file}"
+        # copy to local
+        system "if [ ! -d build ]; then mkdir build; fi" # create build folder locally if needed
+        download "#{sql_file}.gz", "build/", :once => true, :via => :scp
+        run "rm #{sql_file}.gz"
+        # extract and restore
+        system "gunzip -f build/#{File.basename(sql_file)}.gz && echo \"DROP DATABASE #{local_database};CREATE DATABASE #{local_database}\" | mysql && mysql #{local_database} < build/#{File.basename(sql_file)}" if local_database
+      end
+    end
   end
 
   task :push_dump do
@@ -401,11 +434,12 @@ end
 # =========================
 
 # Builds initial contents of the Drupal website's settings file
-def drupal_settings(version)
+def drupal_settings(version, domain)
+  db_domain_name = db_name.gsub("%domain", domain)
   if version.to_s == '6'
     settings = <<-STRING
 <?php
-$db_url = "#{db_type}://#{db_username}:#{db_password}@#{db_host}/#{db_name}";
+$db_url = "#{db_type}://#{db_username}:#{db_password}@#{db_host}/#{db_domain_name}";
 ini_set('arg_separator.output',     '&amp;');
 ini_set('magic_quotes_runtime',     0);
 ini_set('magic_quotes_sybase',      0);
@@ -424,7 +458,7 @@ ini_set('url_rewriter.tags',        '');
     settings = <<-STRING
 <?php
 $databases = array ('default' => array ('default' => array (
-  'database' => '#{db_name}',
+  'database' => '#{db_domain_name}',
   'username' => '#{db_username}',
   'password' => '#{db_password}',
   'host' => '#{db_host}',
@@ -442,4 +476,4 @@ ini_set('session.cookie_lifetime', 2000000);
   end
 end
 
-end # Capistrano::Configuration.instance.load 
+end # Capistrano::Configuration.instance.load
