@@ -1,6 +1,15 @@
 = didi
 
-Description goes here.
+Didi is an collection of capistrano recipes that enable automated deployment and continuous integration of drupal websites. Once you have configured different hosting environments you can use the "didi" command to interact with them.
+
+== What can didi do you for?
+
+* update a hosting environment of your choice with the latest code
+* perform drush commands for maintenance
+* revert features via drush after code updates
+* restore a remote database to your local development machine
+* setup a drupal website from scratch on a new webserver
+* run simpletests with Jenkins
 
 == Contributing to didi
  
@@ -14,29 +23,4 @@ Description goes here.
 
 == Copyright
 
-Copyright (c) 2011 Koen Van Winckel. See LICENSE.txt for
-further details.
-
-
-
-= TODO
-
-* set :site, "apache vhost here" => not clear what this is
-* set :sitesubdir, "default" => use :site here ?
-* create default + multisite with :site
-* sensible default: adminpass => default is admin admin
-* server app, web, db => hide this db depends on settings.php so specified else where
-* set :scm, "subversion" => document options => with svn url needs to be location of cap file
-* set :baseline => should not be mandatory
-* set :sitemail => should not be mandatory
-* stages => reserverd names (eg. test)
-* set :deploy_to => needs to be absolute (+what with trailing slash?)
-* requirements: drush
-* deploy:check => uitbreiden met control of repostioryu (svn / git) bereikbaar is) see "depend"
-* deploy:check => ook mysql connectie controleren
-* svn: problem with acceptance voor certificate
-* scm_username, scm_password 
-* drush:si => ook feature revert all doen
-* apache vhost opgeven en gesymlinked word
-* railslessdeploy: run_locally
-* robots.txt disallow all
+Copyright (c) Koen Van Winckel. See LICENSE.txt for further details.

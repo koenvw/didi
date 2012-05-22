@@ -1,0 +1,29 @@
+## 0.4.1 22 May 2012
+
+* fix compatibility with capistrano 2.12.0
+* you need to uninstall capistrano-ext (included in 2.12.0)
+* cleanup sample stage config in didify
+* fixed cleanup and dbbackup tasks in multisite config
+* minor code and docs cleanup
+
+## 0.4.0 / May 3 2012
+
+* added multisite support (see wiki)
+* added manage:pull_dump
+* extra config options (no_disable:true, local_database:nil, backup_database:true)
+
+## 0.3.2 / Mar 23 2012
+
+* added config option: enable_robots, default to false 
+* added config option: drush_path, on remote server 
+* added default php settings in settings.php file
+* put site in maintenance mode during deploy
+
+## 0.3.1 / Jan 4 2012
+
+* added tests:unit_all + bugfixes
+
+## 0.3.0 / Nov 24 2011
+
+* fix symlinks on rollback
+* added manage:dbdump_previous task
