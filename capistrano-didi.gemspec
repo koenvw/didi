@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "capistrano-didi"
-  s.version = "0.4.0"
+  s.version = "0.4.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Koen Van Winckel"]
-  s.date = "2012-05-03"
+  s.date = "2012-05-22"
   s.description = "didi is a collection of recipes for capistrano that allow drupal to be deployed, tested and used in a CI environment"
   s.email = "koenvw@gmail.com"
   s.executables = ["didify", "didi"]
@@ -19,6 +19,7 @@ Gem::Specification.new do |s|
   ]
   s.files = [
     ".document",
+    "CHANGELOG.txt",
     "Gemfile",
     "Gemfile.lock",
     "LICENSE.txt",
@@ -44,38 +45,32 @@ Gem::Specification.new do |s|
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
       s.add_development_dependency(%q<railsless-deploy>, [">= 1.0.2"])
-      s.add_development_dependency(%q<capistrano-ext>, [">= 1.2.1"])
-      s.add_development_dependency(%q<capistrano>, [">= 2.9.0"])
+      s.add_development_dependency(%q<capistrano>, [">= 2.12.0"])
       s.add_development_dependency(%q<shoulda>, [">= 0"])
-      s.add_development_dependency(%q<bundler>, ["~> 1.0.0"])
+      s.add_development_dependency(%q<bundler>, ["~> 1.1.3"])
       s.add_development_dependency(%q<jeweler>, ["~> 1.6.4"])
       s.add_development_dependency(%q<rcov>, [">= 0"])
-      s.add_runtime_dependency(%q<capistrano>, [">= 2.9.0"])
+      s.add_runtime_dependency(%q<capistrano>, [">= 2.12.0"])
       s.add_runtime_dependency(%q<railsless-deploy>, [">= 1.0.2"])
-      s.add_runtime_dependency(%q<capistrano-ext>, [">= 1.2.1"])
     else
       s.add_dependency(%q<railsless-deploy>, [">= 1.0.2"])
-      s.add_dependency(%q<capistrano-ext>, [">= 1.2.1"])
-      s.add_dependency(%q<capistrano>, [">= 2.9.0"])
+      s.add_dependency(%q<capistrano>, [">= 2.12.0"])
       s.add_dependency(%q<shoulda>, [">= 0"])
-      s.add_dependency(%q<bundler>, ["~> 1.0.0"])
+      s.add_dependency(%q<bundler>, ["~> 1.1.3"])
       s.add_dependency(%q<jeweler>, ["~> 1.6.4"])
       s.add_dependency(%q<rcov>, [">= 0"])
-      s.add_dependency(%q<capistrano>, [">= 2.9.0"])
+      s.add_dependency(%q<capistrano>, [">= 2.12.0"])
       s.add_dependency(%q<railsless-deploy>, [">= 1.0.2"])
-      s.add_dependency(%q<capistrano-ext>, [">= 1.2.1"])
     end
   else
     s.add_dependency(%q<railsless-deploy>, [">= 1.0.2"])
-    s.add_dependency(%q<capistrano-ext>, [">= 1.2.1"])
-    s.add_dependency(%q<capistrano>, [">= 2.9.0"])
+    s.add_dependency(%q<capistrano>, [">= 2.12.0"])
     s.add_dependency(%q<shoulda>, [">= 0"])
-    s.add_dependency(%q<bundler>, ["~> 1.0.0"])
+    s.add_dependency(%q<bundler>, ["~> 1.1.3"])
     s.add_dependency(%q<jeweler>, ["~> 1.6.4"])
     s.add_dependency(%q<rcov>, [">= 0"])
-    s.add_dependency(%q<capistrano>, [">= 2.9.0"])
+    s.add_dependency(%q<capistrano>, [">= 2.12.0"])
     s.add_dependency(%q<railsless-deploy>, [">= 1.0.2"])
-    s.add_dependency(%q<capistrano-ext>, [">= 1.2.1"])
   end
 end
 
