@@ -38,9 +38,9 @@ end
 files = {
   "Capfile" => unindent(<<-FILE),
     require 'railsless-deploy'          # gem install railsless-deploy
-    require 'capistrano/ext/multistage' # gem install capistrano-ext
     require 'didi/recipes/didi.rb'      # gem install capistrano-didi 
     load 'config/deploy'
+    require 'capistrano/ext/multistage' # gem install capistrano
   FILE
 
   "config/deploy.rb" => 'set :default_stage, "staging"

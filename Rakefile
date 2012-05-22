@@ -21,9 +21,8 @@ Jeweler::Tasks.new do |gem|
   gem.description = %Q{didi is a collection of recipes for capistrano that allow drupal to be deployed, tested and used in a CI environment}
   gem.email = "koenvw@gmail.com"
   gem.authors = ["Koen Van Winckel"]
-  gem.add_dependency "capistrano", ">= 2.9.0"
+  gem.add_dependency "capistrano", ">= 2.12.0"
   gem.add_dependency "railsless-deploy", ">= 1.0.2"
-  gem.add_dependency "capistrano-ext", ">= 1.2.1"
   gem.post_install_message = '=> "didify" and "didi" commands installed. Try them out!'
   # dependencies defined in Gemfile
 end
