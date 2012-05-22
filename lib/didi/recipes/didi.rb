@@ -77,7 +77,7 @@ depend :remote, :command, "#{drush_path}drush"
 namespace :deploy do
 
   desc <<-DESC
-    Deploys your Drupal site. It supposes that the Setup task was already executed.
+    Deploys your Drupal site, runs drush:update. It supposes that the Setup task was already executed.
     This overrides the default Capistrano Deploy task to handle database operations and backups,
     all of them via Drush.
   DESC
@@ -92,16 +92,14 @@ namespace :deploy do
   task :cold do
     transaction do
       setup
-      update_code
-      symlink
+      update
     end
   end
   after "deploy:cold", "drush:si"
 
   desc "Deploys latest code and rebuild the database"
   task :rebuild do
-    update_code
-    symlink
+    update
     manage.dbdump_previous
     cleanup
   end
@@ -119,12 +117,12 @@ namespace :deploy do
 
     run <<-CMD
       mkdir -p #{dirs.join(' ')}
-      #{try_sudo} chown #{user}:#{srv_usr} #{shared_files.to_a.join(' ')} &&
-      #{try_sudo} chmod g+w #{shared_files.to_a.join(' ')}
+      #{try_sudo} chown #{user}:#{srv_usr} #{shared_files.join(' ')} &&
+      #{try_sudo} chmod g+w #{shared_files.join(' ')}
     CMD
 
     #create drupal config file
-    domain.to_a.each_with_index do |d, i|
+    domain.each_with_index do |d, i|
       configuration = drupal_settings(drupal_version, d)
       put configuration, shared_settings[i]
     end
@@ -147,7 +145,7 @@ namespace :deploy do
 
 
     release_domain.each do |rd|
-      run "if [ ! -d #{rd} ]; then mkdir #{rd}; fi" # in case the default is not versioned
+      run "if [ ! -d #{rd} ]; then mkdir #{rd}; fi" # in case the default folder is not versioned
     end
 
     shared_files.each_with_index do |sf, i|
@@ -244,15 +242,17 @@ namespace :deploy do
       end
     end
 
-    desc <<-DESC
-    go back to the previous release (code and database)
-    DESC
-    task :default do
-      revision
-      db_rollback
-      cleanup
+  end
+  
+  namespace :web do
+    desc "Makes the application web-accessible again."
+    task :enable do
+      drush.ensite
     end
-
+    desc "Present a maintenance page to visitors."
+    task :disable do
+      drush.dissite
+    end
   end
 
 end
@@ -292,13 +292,13 @@ namespace :drush do
     end
     cc
   end
-  desc "[internal]  Enable the simpletest feature"
+  desc "[internal] Enable the simpletest feature"
   task :enst do
     run "cd #{current_path}/#{drupal_path} && #{drush_path}drush pm-enable simpletest -y"
     cc
   end
 
-  desc "Disable maintenance mode, enabling the site"
+  desc "[internal] Disable maintenance mode, enabling the site"
   task :ensite do
     if drupal_version == 6
       run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set site_offline 0"
@@ -309,7 +309,7 @@ namespace :drush do
     end
   end
 
-  desc "Enable maintenance mode, disabling the site"
+  desc "[internal] Enable maintenance mode, disabling the site"
   task :dissite do
     if drupal_version == 6
       run "cd #{current_path}/#{drupal_path} && #{drush_path}drush vset --always-set site_offline 1"
