@@ -15,7 +15,6 @@ _cset(:profile)         { abort "Please specify the Drupal install profile (:pro
 _cset(:site)            { abort "Please specify the Drupal site (:site)." }
 _cset(:sitemail)        { abort "Please specify the Drupal site mail (:sitemail)." }
 _cset(:adminpass)       { abort "Please specify the Drupal admin password (:adminpass)." }
-_cset(:sitesubdir)      { abort "Please specify the Drupal site subdir (:sitesubdir)." } # FIXME: files folder needs to be symlinked ??
 _cset(:baseline)        { abort "Please specify the Baseline feature (:baseline)." }
 
 

@@ -45,28 +45,28 @@ files = {
 
   "config/deploy.rb" => 'set :default_stage, "staging"
 set :stages, %w(staging production)
-set :application, "set your application name here"
-set :repository,  "set your repository location here"
+set :application, "your_application_name"
+set :repository,  "your_repository_location_here"
 set :drupal_path, "drupal" # change this to your drupal folder
 ',
-  "config/deploy/staging.rb" => 'set :user, "set your shell user here"
-server "set your server hostname here", :app, :web, :db, :primary => true
+  "config/deploy/staging.rb" => 'set :user, "ssh_user_name"
+server "server.example.com", :app, :web, :db, :primary => true
 
-set :deploy_to, "the path on the remote server"
+set :deploy_to, "the_path_on_the_remote_server"
 set :branch, "master"
 
 set :db_type, "mysql"
-set :db_name, "set database name"
-set :db_username, "set database user name"
-set :db_password, "set database password"
+set :db_name, "database_name"
+set :db_username, "database_user_name"
+set :db_password, "database_password"
 
 set :profile, "minimal"
-set :site, "apache vhost here"
-set :sitemail, "drupal site email address"
-set :adminpass, "drupal admin pass"
-set :sitesubdir, "default"
+set :domain, "default"
+set :site, "apache_vhost"
+set :sitemail, "drupal_site_email_address"
+set :adminpass, "drupal_admin_pass"
 
-set :baseline, "drupal feature to activate after fresh install"
+set :baseline, "drupal_feature_to_activate_after_fresh_install"
 '}
 
 base = ARGV.shift
