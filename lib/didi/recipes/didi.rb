@@ -103,6 +103,7 @@ namespace :deploy do
     update_code
     symlink
     manage.dbdump_previous
+    cleanup
   end
   after "deploy:rebuild", "drush:si"
 
@@ -132,8 +133,12 @@ namespace :deploy do
 
   desc "[internal] Rebuild files and settings symlinks"
   task :finalize_update, :except => { :no_release => true } do
+    # Specifies an on_rollback hook for the currently executing task. If this
+    # or any subsequent task then fails, and a transaction is active, this
+    # hook will be executed.
     on_rollback do
       if previous_release
+        #FIXME: won't work on mulitsite config
         run "ln -nfs #{shared_files} #{previous_release_files} && ln -nfs #{shared_settings} #{previous_release_settings}"
       else
         logger.important "no previous release to rollback to, rollback of drupal shared data skipped."
@@ -176,8 +181,7 @@ namespace :deploy do
       logger.info "keeping #{count} of #{releases.length} deployed releases"
       old_releases = (releases - releases.last(count))
       directories = old_releases.map { |release| File.join(releases_path, release) }.join(" ")
-      databases = old_releases.map { |release| File.join(dbbackups_path, "#{release}.sql") }.join(" ")
-
+      databases = dbbackups_path.product(old_releases.map { |release| "#{release}.sql"} ).map { |p| File.join(p)}.join(" ") if backup_database
       run "rm -rf #{directories} #{databases}"
     end
   end
@@ -185,12 +189,21 @@ namespace :deploy do
   namespace :rollback do
 
     desc <<-DESC
+    go back to the previous release (code and database)
+    DESC
+    task :default do
+      revision
+      #db_rollback if domain.to_a.size == 1 # FIXME: not supported in multisite configuration, does not work
+      cleanup
+    end
+
+    desc <<-DESC
       [internal] Removes the most recently deployed release.
       This is called by the rollback sequence, and should rarely
       (if ever) need to be called directly.
     DESC
     task :cleanup, :except => { :no_release => true } do
-      # chmod 777 #{release_settings} #{release_files} &&
+      # FIXME: this doesn't cleanup dbbackups
       run "if [ `readlink #{current_path}` != #{current_release} ]; then rm -rf #{current_release}; fi"
     end
 
@@ -202,9 +215,13 @@ namespace :deploy do
         run <<-CMD
           rm #{current_path};
           ln -s #{previous_release} #{current_path};
-          ln -nfs #{shared_files} #{previous_release_files};
-          ln -nfs #{shared_settings} #{previous_release_settings}
         CMD
+        shared_files.each_with_index do |sf, i|
+          run <<-CMD
+            ln -nfs #{sf} #{previous_release_files[i]} &&
+            ln -nfs #{shared_settings[i]} #{previous_release_settings[i]}
+          CMD
+        end
       else
         abort "could not rollback the code because there is no prior release"
       end
@@ -216,6 +233,7 @@ namespace :deploy do
     database and import the backup. This task should NEVER be called standalone.
     DESC
     task :db_rollback, :except => { :no_release => true } do
+      #FIXME: does not work
       if previous_release
         logger.info "Dumping current database and importing previous one (If one is found)."
         previous_db = File.join(dbbackups_path, "#{releases[-2]}.sql")
@@ -398,7 +416,9 @@ namespace :manage do
   task :dbdump_previous do
     #Backup the previous release's database
     if previous_release && backup_database
-      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-dump > #{ File.join(dbbackups_path, "#{releases[-2]}.sql") }"
+      domain.each_with_index do |d,i|
+        run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " sql-dump > #{ File.join(dbbackups_path[i], "#{releases[-2]}.sql") }"
+      end
     end
   end
 
