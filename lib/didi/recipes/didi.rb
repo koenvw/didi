@@ -116,9 +116,7 @@ namespace :deploy do
     dirs += domain.map { |d| File.join(shared_path, d) }
 
     run <<-CMD
-      mkdir -p #{dirs.join(' ')}
-      #{try_sudo} chown #{user}:#{srv_usr} #{shared_files.join(' ')} &&
-      #{try_sudo} chmod g+w #{shared_files.join(' ')}
+      mkdir -p #{dirs.join(' ')} && #{try_sudo} chown #{user}:#{srv_usr} #{shared_files.join(' ')} && #{try_sudo} chmod g+w #{shared_files.join(' ')}
     CMD
 
     #create drupal config file
@@ -157,7 +155,7 @@ namespace :deploy do
 
     if previous_release
       # FIXME: executes on initial deploy:cold?
-      # FIXME: this breaks the current site untill deploy:symlink is executed ?
+      # FIXME: this breaks the current site until deploy:symlink is executed ?
       previous_release_domain.each_with_index do |prd, i|
         run "if [ -d #{prd} ]; then chmod 777 #{prd}; fi" # if drupal changed the permissions of the folder
         run <<-CMD
@@ -330,10 +328,10 @@ namespace :drush do
   desc "Update via drush, runs fra, updb and cc"
   task :update do
     dissite unless no_disable
-    updb
-    cc # fix for user_permissions constraint?
-    fra
-    cc # for good measure?
+    updb # database updates (also handles modules that have been moved around)
+    cc # fix for user_permissions constraint (install new modules)
+    fra # reverts all features
+    cc # clear cache (required for new menu items, hook_menu)
     ensite unless no_disable
     manage.block_robots unless enable_robots
   end
