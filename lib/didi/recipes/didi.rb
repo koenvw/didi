@@ -28,14 +28,15 @@ set :drupal_version,    '7'
 set :keep_releases,     5
 set :use_sudo,          false
 
-set :domain,          'default'
-set :db_host,         'localhost'
-set :drupal_path,     'drupal'
-set :srv_usr,         'www-data'
-set :enable_robots,   false
-set :no_disable,      true
-set :local_database,  nil
-set :backup_database, true
+set :domain,            'default'
+set :db_host,           'localhost'
+set :drupal_path,       'drupal'
+set :srv_usr,           'www-data'
+set :enable_robots,     false
+set :no_disable,        true
+set :local_database,    nil
+set :backup_database,   true
+set :push_dump_enabled, false
 
 ssh_options[:forward_agent] = true
 #ssh_options[:verbose] = :debug #FIXME
@@ -447,7 +448,24 @@ namespace :manage do
   end
 
   task :push_dump do
+    abort("ERROR: multisite not supported") if is_multisite
+    abort("NO LOCAL DATABASE FOUND, set :local_database in the config file..") if local_database.nil?
+    abort("THIS STAGE: #{stage} DOES NOT SUPPORT manage:push_dump") if push_dump_enabled.nil?
 
+    set(:runit, Capistrano::CLI.ui.ask("WARNING!! will overwrite this REMOTE database: '#{db_name}', type 'yes' to continue: "))
+    if runit == 'yes'
+      sql_file = "#{Time.now.to_i}.sql"
+      system "if [ ! -d build ]; then mkdir build; fi" # create build folder locally if needed
+      # dump & gzip local file
+      system "cd #{drupal_path} && drush sql-dump > ../build/#{sql_file} && gzip ../build/#{sql_file}"
+      # copy to remote
+      upload "build/#{sql_file}.gz", File.join(dbbackups_path, "#{sql_file}.gz"), :once => true, :via => :scp
+      system "rm build/#{sql_file}.gz"
+      # extract and restore
+      run "gunzip -f #{File.join(dbbackups_path, "#{sql_file}.gz")} && cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-cli < #{File.join(dbbackups_path, "#{sql_file}")}"
+      run "rm  #{File.join(dbbackups_path, "#{sql_file}")}"
+    end
+  
   end
 end
 
