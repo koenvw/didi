@@ -63,6 +63,8 @@ _cset(:previous_release_settings)     { releases.length > 1 ? domain.to_a.map { 
 _cset(:previous_release_files)        { releases.length > 1 ? domain.to_a.map { |d| File.join(previous_release, drupal_path, 'sites', d, files) } : nil }
 _cset(:previous_release_domain)       { releases.length > 1 ? domain.to_a.map { |d| File.join(previous_release, drupal_path, 'sites', d) } : nil }
 
+_cset(:is_multisite)                  { domain.to_a.size > 1 }
+
 # =========================================================================
 # Extra dependecy checks
 # =========================================================================
@@ -422,20 +424,24 @@ namespace :manage do
 
   desc 'Dump remote database and restore locally'
   task :pull_dump do
-    if local_database.nil?
-      puts "NO LOCAL DATABASE FOUND, set :local_database in the config file.."
-    else
-      set(:runit, Capistrano::CLI.ui.ask("WARNING!! this will overwrite this local database: '#{local_database}', type 'yes' to continue: "))
-      if runit == 'yes'
-        sql_file = File.join(dbbackups_path, "#{releases.last}-pull.sql")
-        # dump & gzip remote file
-        run "cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-dump > #{sql_file} && gzip -f #{sql_file}"
-        # copy to local
-        system "if [ ! -d build ]; then mkdir build; fi" # create build folder locally if needed
-        download "#{sql_file}.gz", "build/", :once => true, :via => :scp
-        run "rm #{sql_file}.gz"
-        # extract and restore
-        system "gunzip -f build/#{File.basename(sql_file)}.gz && echo \"DROP DATABASE #{local_database};CREATE DATABASE #{local_database}\" | mysql && mysql #{local_database} < build/#{File.basename(sql_file)}" if local_database
+    abort("ERROR: multisite not supported") if is_multisite
+    abort("NO LOCAL DATABASE FOUND, set :local_database in the config file..") if local_database.nil?
+
+    set(:runit, Capistrano::CLI.ui.ask("WARNING!! will overwrite this local database: '#{local_database}', type 'yes' to continue: "))
+    if runit == 'yes'
+      sql_file = File.join(dbbackups_path, "#{releases.last}-pull.sql")
+      # dump & gzip remote file
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-dump > #{sql_file} && gzip -f #{sql_file}"
+      # copy to local
+      system "if [ ! -d build ]; then mkdir build; fi" # create build folder locally if needed
+      download "#{sql_file}.gz", "build/", :once => true, :via => :scp
+      run "rm #{sql_file}.gz"
+      # extract and restore
+      system "gunzip -f build/#{File.basename(sql_file)}.gz && echo \"DROP DATABASE #{local_database};CREATE DATABASE #{local_database}\" | mysql && mysql #{local_database} < build/#{File.basename(sql_file)}" if local_database
+      # check if file sanitation sql file exists
+      if File.exists?("config/sql/#{stage}.sql")
+        puts "  * executing \"config/sql/#{stage}.sql\""
+        system "mysql #{local_database} < config/sql/#{stage}.sql"
       end
     end
   end
