@@ -1,3 +1,9 @@
+## 0.4.2 19 June 2012
+
+* fixed issue in deploy:setup where "chown" was created as a folder
+* added support for cleaning up sql dump in manage:pull_dump
+* added new task: manage:push_dump to copy local database to remote
+
 ## 0.4.1 22 May 2012
 
 * fix compatibility with capistrano 2.12.0

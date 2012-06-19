@@ -1,6 +1,6 @@
 = didi
 
-Didi is an collection of capistrano recipes that enable automated deployment and continuous integration of drupal websites. Once you have configured different hosting environments you can use the "didi" command to interact with them.
+Didi is an collection of capistrano recipes that enables automated deployment and continuous integration of drupal websites. Once you have configured different hosting environments you can use the "didi" command to interact with them.
 
 == What can didi do you for?
 
