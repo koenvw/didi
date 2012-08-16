@@ -67,7 +67,7 @@ _cset(:previous_release_domain)       { releases.length > 1 ? domain.to_a.map { 
 _cset(:is_multisite)                  { domain.to_a.size > 1 }
 
 # =========================================================================
-# Extra dependecy checks
+# Extra dependency checks
 # =========================================================================
 depend :local,  :command, "drush"
 depend :remote, :command, "#{drush_path}drush"
@@ -143,7 +143,6 @@ namespace :deploy do
         logger.important "no previous release to rollback to, rollback of drupal shared data skipped."
       end
     end
-
 
     release_domain.each do |rd|
       run "if [ ! -d #{rd} ]; then mkdir #{rd}; fi" # in case the default folder is not versioned
@@ -426,7 +425,7 @@ namespace :manage do
   desc 'Dump remote database and restore locally'
   task :pull_dump do
     abort("ERROR: multisite not supported") if is_multisite
-    abort("NO LOCAL DATABASE FOUND, set :local_database in the config file..") if local_database.nil?
+    abort("NO LOCAL DATABASE FOUND, set :local_database in the config file..") unless local_database
 
     set(:runit, Capistrano::CLI.ui.ask("WARNING!! will overwrite this local database: '#{local_database}', type 'yes' to continue: "))
     if runit == 'yes'
@@ -447,10 +446,11 @@ namespace :manage do
     end
   end
 
+  desc 'Dump local database and restore remote'
   task :push_dump do
     abort("ERROR: multisite not supported") if is_multisite
-    abort("NO LOCAL DATABASE FOUND, set :local_database in the config file..") if local_database.nil?
-    abort("THIS STAGE: #{stage} DOES NOT SUPPORT manage:push_dump") if push_dump_enabled.nil?
+    abort("NO LOCAL DATABASE FOUND, set :local_database in the config file..") unless local_database
+    abort("THIS STAGE: #{stage} DOES NOT SUPPORT manage:push_dump") unless push_dump_enabled
 
     set(:runit, Capistrano::CLI.ui.ask("WARNING!! will overwrite this REMOTE database: '#{db_name}', type 'yes' to continue: "))
     if runit == 'yes'
