@@ -288,7 +288,9 @@ namespace :drush do
   desc "[internal] Enable the baseline feature"
   task :bl do
     domain.each do |d|
-      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " pm-enable #{baseline.gsub("%domain", d)} -y"
+      baseline.to_a.each do |bl_item|
+        run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " pm-enable #{bl_item.gsub("%domain", d)} -y"
+      end
     end
     cc
   end
