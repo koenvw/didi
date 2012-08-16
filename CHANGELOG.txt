@@ -1,3 +1,10 @@
+## 0.4.3 16 Aug 2012
+
+* fixed issue where deploy would fail on cleanup because file permissions (thx sara)
+* added drush task: drush:fd to display feature diffs remotely
+* added drush task: drush:fraforce to force-revert all features (by c31ck)
+* the :baseline setting can now be an array so multiple features can be enabled (by c31ck)
+
 ## 0.4.2 19 June 2012
 
 * fixed issue in deploy:setup where "chown" was created as a folder
