@@ -154,7 +154,10 @@ namespace :deploy do
         ln -nfs #{shared_settings[i]} #{release_settings[i]}
         CMD
     end
+  end
 
+  desc "[internal] cleanup old symlinks, must run after deploy:symlink"
+  task :cleanup_shared_symlinks, :except => { :no_release => true } do
     if previous_release
       # FIXME: executes on initial deploy:cold?
       # FIXME: this breaks the current site until deploy:symlink is executed ?
@@ -167,6 +170,7 @@ namespace :deploy do
       end
     end
   end
+  after "deploy:symlink", "deploy:cleanup_shared_symlinks"
 
   desc <<-DESC
     Removes old releases and corresponding DB backups.
