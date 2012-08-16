@@ -269,6 +269,13 @@ namespace :drush do
     end
   end
 
+  desc "Show features diff status"
+  task :fd do
+    domain.each do |d|
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " features-diff"
+    end
+  end
+
   desc "Revert all enabled feature modules on your site"
   task :fra do
     domain.each do |d|
