@@ -276,6 +276,13 @@ namespace :drush do
     end
   end
 
+  desc "Force revert all enabled feature modules on your site"
+  task :fraforce do
+    domain.each do |d|
+      run "cd #{current_path}/#{drupal_path} && #{drush_path}drush" + (d == 'default' ? '' : " -l #{d}") + " features-revert-all --force -y"
+    end
+  end
+
   desc "Install Drupal along with modules/themes/configuration using the specified install profile"
   task :si do
     domain.each do |d|
