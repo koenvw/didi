@@ -531,6 +531,14 @@ ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 100);
 ini_set('session.gc_maxlifetime', 200000);
 ini_set('session.cookie_lifetime', 2000000);
+
+// Allow local env to override settings by creating a local.settings.php.
+$path = str_replace('settings.php', 'local.settings.php', __FILE__);
+
+if (file_exists($path)) {
+  include_once($path);
+}
+
     STRING
   else
     abort "Unsupported Drupal version #{version}."
