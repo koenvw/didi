@@ -56,6 +56,19 @@ _cset(:shared_files)    { domain.to_a.map { |d| File.join(shared_path, d, files)
 _cset(:dbbackups_path)  { domain.to_a.map { |d| File.join(deploy_to, dbbackups, d) } }
 _cset(:drush)           { "drush -r #{current_path}" + (domain == 'default' ? '' : " -l #{domain}") }  # FIXME: not in use?
 
+# these variables are still in rails-less deploy gem
+# but have been updated in the latest capistrano gem
+# we use set to override them instead of _cset
+# see https://github.com/capistrano/capistrano/commit/92941e855d70a5778eb094a972fdf43c70802b95#lib/capistrano/recipes/deploy.rb
+# and https://github.com/capistrano/capistrano/commit/8638f2278ebe484ebcb1a1950e157c30c2d70960#lib/capistrano/recipes/deploy.rb
+# for background
+set(:releases)          { capture("ls -x #{releases_path}", :except => { :no_release => true }).split.sort }
+
+set(:current_revision)  { capture("cat #{current_path}/REVISION",     :except => { :no_release => true }).chomp }
+set(:latest_revision)   { capture("cat #{current_release}/REVISION",  :except => { :no_release => true }).chomp }
+set(:previous_revision) { capture("cat #{previous_release}/REVISION", :except => { :no_release => true }).chomp if previous_release }
+# end fix
+
 _cset(:release_settings)              { domain.to_a.map { |d| File.join(release_path, drupal_path, 'sites', d, settings) } }
 _cset(:release_files)                 { domain.to_a.map { |d| File.join(release_path, drupal_path, 'sites', d, files) } }
 _cset(:release_domain)                { domain.to_a.map { |d| File.join(release_path, drupal_path, 'sites', d) } }
@@ -159,8 +172,6 @@ namespace :deploy do
   desc "[internal] cleanup old symlinks, must run after deploy:symlink"
   task :cleanup_shared_symlinks, :except => { :no_release => true } do
     if previous_release
-      # FIXME: executes on initial deploy:cold?
-      # FIXME: this breaks the current site until deploy:symlink is executed ?
       previous_release_domain.each_with_index do |prd, i|
         run "if [ -d #{prd} ]; then chmod 777 #{prd}; fi" # if drupal changed the permissions of the folder
         run <<-CMD
@@ -485,7 +496,6 @@ namespace :manage do
       run "gunzip -f #{File.join(dbbackups_path, "#{sql_file}.gz")} && cd #{current_path}/#{drupal_path} && #{drush_path}drush sql-cli < #{File.join(dbbackups_path, "#{sql_file}")}"
       run "rm  #{File.join(dbbackups_path, "#{sql_file}")}"
     end
-  
   end
 end
 

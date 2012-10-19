@@ -1,17 +1,23 @@
-## 0.4.3 16 Aug 2012
+## 0.4.4 / 19 Oct 2012
+
+* fixed issue where wrong previous releases folder was used during cleanup_shared_symlinks
+  this could result in deploy:cleanup failing
+* allow local env to override settings by creating a local.settings.php. (by c31ck)
+
+## 0.4.3 / 16 Aug 2012
 
 * fixed issue where deploy would fail on cleanup because file permissions (thx sara)
 * added drush task: drush:fd to display feature diffs remotely
 * added drush task: drush:fraforce to force-revert all features (by c31ck)
 * the :baseline setting can now be an array so multiple features can be enabled (by c31ck)
 
-## 0.4.2 19 June 2012
+## 0.4.2 / 19 June 2012
 
 * fixed issue in deploy:setup where "chown" was created as a folder
 * added support for cleaning up sql dump in manage:pull_dump
 * added new task: manage:push_dump to copy local database to remote
 
-## 0.4.1 22 May 2012
+## 0.4.1 / 22 May 2012
 
 * fix compatibility with capistrano 2.12.0
 * you need to uninstall capistrano-ext (included in 2.12.0)
@@ -19,24 +25,24 @@
 * fixed cleanup and dbbackup tasks in multisite config
 * minor code and docs cleanup
 
-## 0.4.0 / May 3 2012
+## 0.4.0 / 3 May 2012
 
 * added multisite support (see wiki)
 * added manage:pull_dump
 * extra config options (no_disable:true, local_database:nil, backup_database:true)
 
-## 0.3.2 / Mar 23 2012
+## 0.3.2 / 23 Mar 2012
 
 * added config option: enable_robots, default to false 
 * added config option: drush_path, on remote server 
 * added default php settings in settings.php file
 * put site in maintenance mode during deploy
 
-## 0.3.1 / Jan 4 2012
+## 0.3.1 / 4 Jan 2012
 
 * added tests:unit_all + bugfixes
 
-## 0.3.0 / Nov 24 2011
+## 0.3.0 / 24 Nov 2011
 
 * fix symlinks on rollback
 * added manage:dbdump_previous task
