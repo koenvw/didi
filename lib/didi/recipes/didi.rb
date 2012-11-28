@@ -10,6 +10,7 @@ _cset(:db_type)         { abort "Please specify the Drupal database type (:db_ty
 _cset(:db_name)         { abort "Please specify the Drupal database name (:db_name)." }
 _cset(:db_username)     { abort "Please specify the Drupal database username (:db_username)." }
 _cset(:db_password)     { abort "Please specify the Drupal database password (:db_password)." }
+_cset(:db_prefix)       { abort "Please specify the Drupal database prefix (:db_prefix)." }
 
 _cset(:profile)         { abort "Please specify the Drupal install profile (:profile)." }
 _cset(:site)            { abort "Please specify the Drupal site (:site)." }
@@ -258,7 +259,7 @@ namespace :deploy do
     end
 
   end
-  
+
   namespace :web do
     desc "Makes the application web-accessible again."
     task :enable do
@@ -535,7 +536,7 @@ $databases = array ('default' => array ('default' => array (
   'host' => '#{db_host}',
   'port' => '',
   'driver' => '#{db_type}',
-  'prefix' => '',
+  'prefix' => '#{db_prefix}',
 )));
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 100);
