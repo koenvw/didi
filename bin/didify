@@ -38,7 +38,7 @@ end
 files = {
   "Capfile" => unindent(<<-FILE),
     require 'railsless-deploy'          # gem install railsless-deploy
-    require 'didi/recipes/didi.rb'      # gem install capistrano-didi 
+    require 'didi/recipes/didi.rb'      # gem install capistrano-didi
     load 'config/deploy'
     require 'capistrano/ext/multistage' # gem install capistrano
   FILE
@@ -59,6 +59,7 @@ set :db_type, "mysql"
 set :db_name, "database_name"
 set :db_username, "database_user_name"
 set :db_password, "database_password"
+set :db_prefix, "database_prefix"
 
 set :profile, "minimal"
 set :domain, "default"
@@ -69,9 +70,9 @@ set :adminpass, "drupal_admin_pass"
 set :baseline, "drupal_feature_to_activate_after_fresh_install"
 ',
 "config/sql/staging.sql" => <<scrub
--- 
+--
 -- Scrub important information from a Drupal database.
--- 
+--
 
 -- Remove all email addresses.
 UPDATE users SET mail=CONCAT('user', uid, '@example.com'), init=CONCAT('user', uid, '@example.com') WHERE uid != 0;
@@ -102,7 +103,7 @@ UPDATE users SET mail=CONCAT('user', uid, '@example.com'), init=CONCAT('user', u
 -- TRUNCATE custom_customer_lead_data;
 
 -- USER PASSWORDS
--- These statements assume you want to preserve real passwords for developers. Change 'rid=3' to the 
+-- These statements assume you want to preserve real passwords for developers. Change 'rid=3' to the
 -- developer or test role you want to preserve.
 
 -- DRUPAL 6
@@ -113,9 +114,9 @@ UPDATE users SET mail=CONCAT('user', uid, '@example.com'), init=CONCAT('user', u
 -- UPDATE users SET pass = MD5('supersecret!') WHERE uid = 1;
 
 -- DRUPAL 7
--- Drupal 7 requires sites to generate a hashed password specific to their site. A script in the 
+-- Drupal 7 requires sites to generate a hashed password specific to their site. A script in the
 -- docroot/scripts directory is provided for doing this. From your docroot run the following:
---      
+--
 --    scripts/password-hash.sh password
 --
 -- this will generate a hash for the password "password". In the following statements replace
